@@ -1,18 +1,24 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class Driver {
-	
-	public static void main(String[] args) {
-		int row = 4, col = 2, exp = 2, b = 1;
-		//DataCreater data = new DataCreater(row, col, exp, b);
-		//data.create();
 
-		double[] biases = new double[b];
-		double[] expected = new double[exp];
-		double[] weights = new double[row * col];
-		double[] inputs = new double[row];		
+	private static List<Double> biases = new ArrayList<>();
+	private static List<Double> expected = new ArrayList<>();
+	private static List<Double> weights = new ArrayList<>();
+	private static List<Double> activations = new ArrayList<>();
+	private static List<Double> inputs = new ArrayList<>();
+	private static List<Double> outputs = new ArrayList<>();
+	
+	private static void dataWrite(int inputSize, int weightSize, int expectedSize, int biasSize) {
+		DataCreater data = new DataCreater(inputSize, weightSize, expectedSize, biasSize);
+		data.create();
+	}
+	
+	private static void dataRead() {
 		int i = 0;
 		
 		try {
@@ -21,7 +27,7 @@ public class Driver {
 			i = 0;
 			
 			while(reader.hasNext()) {
-				expected[i++] = Double.parseDouble(reader.next());				
+				expected.add(Double.parseDouble(reader.next()));				
 			}
 			
 			reader.close();
@@ -35,7 +41,7 @@ public class Driver {
 			i = 0;
 			
 			while(reader.hasNext()) {
-				inputs[i++]= Double.parseDouble(reader.next());				
+				inputs.add(Double.parseDouble(reader.next()));				
 			}
 			
 			reader.close();
@@ -49,7 +55,7 @@ public class Driver {
 			i = 0;
 			
 			while(reader.hasNext()) {
-				weights[i++] = Double.parseDouble(reader.next());				
+				weights.add(Double.parseDouble(reader.next()));			
 			}
 			
 			reader.close();
@@ -63,44 +69,106 @@ public class Driver {
 			i = 0;
 			
 			while(reader.hasNext()) {
-				biases[i++] = Double.parseDouble(reader.next());				
+				biases.add(Double.parseDouble(reader.next()));			
 			}
 			
 			reader.close();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
-		}
-		
-		//--------------------------------------------------------------------------------------------
+		}		
+	}
 
-
-		NuronNetwork forward = new NuronNetwork();
-		int[] hiddenLayerShapes = {2};
+	//------------------------------------------------------------------------
+	
+	// The shape of the hidden layers.
+	// The length of this array is the depth of the network,
+	// while individual numbers describe the amount of nodes for each layer.
+	private static void network(int[] hiddenLayerShapes, int outputSize) {
+		NuronNetwork net = new NuronNetwork();
+		int weightCounter = 0;
 		
-		for(int hidden = 0; hidden < hiddenLayerShapes.length; hidden++) {
-			double[] nodes = new double[hiddenLayerShapes[hidden]];
-			
-			for(int j = 0; j < col; j++) {
-				double[] w = new double[row];
-				i = 0;
-				
-				for(int k = j; k < weights.length; k += col) {
-					w[i++] = weights[k];
-				}
-			
-				nodes[j] = forward.node(inputs, w, biases[hidden]);	
+		// Inputs * Weights = Activations
+		int shape = hiddenLayerShapes[0];
+		
+		for(int i = 0; i < shape; i++) {
+			List<Double> w = new ArrayList<>();
+
+			for(int j = i; j < (inputs.size() * shape); j += shape) {
+				w.add(weights.get(j));
 			}
 
-			inputs = nodes;
-		}
+			weightCounter += w.size();
+			double n = net.node(inputs, w, biases.get(0));
+			activations.add(n);			
+		}		
 		
-		
-		for(int j = 0; j < inputs.length; j++) {
-			System.out.println(inputs[j]);
-		}
+		// Activations(x-1) * Weights = Activations(x)
+		for(int i = 1; i < hiddenLayerShapes.length; i++) {
+			int prevShape = hiddenLayerShapes[i - 1];
+			int currShape = hiddenLayerShapes[i];
+			List<Double> actSub = activations.subList(activations.size() - prevShape, activations.size());
+			List<Double> tmp = new ArrayList<>();
+			
+			for(int j = 0; j < currShape; j++) {
+				List<Double> w = new ArrayList<>();
+				
+				for(int k = j; k < prevShape * currShape; k += currShape) {
+					w.add(weights.get(k + weightCounter));
+				}
 	
-		double err = forward.error(inputs, expected);
-		System.out.println(err);
+				weightCounter += prevShape;
+				double n = net.node(actSub, w, biases.get(i));
+				tmp.add(n);				
+			}
+			
+			activations.addAll(tmp);
+		}
+
+		// Activations * Weights = Outputs
+		int lastLayer = hiddenLayerShapes[hiddenLayerShapes.length - 1];
+		List<Double> actSub = activations.subList(activations.size() - lastLayer, activations.size());
+
+		for(int i = 0; i < outputSize; i++) {	
+			for(int j = i; j < actSub.size(); j += outputSize) {
+				List<Double> w = new ArrayList<>();
+				
+				for(int k = weightCounter + j; k < weights.size(); k += outputSize) {
+					w.add(weights.get(k));	
+				}
+	
+				double n = net.node(actSub, w, 0.0);
+				outputs.add(n);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------
+	public static void main(String[] args) {
+		int[] hiddenLayerShapes = {5,3,2,2};
+		int length = hiddenLayerShapes.length;
+		int inputSize = 10;
+		int expectedSize = 2;
+		int biasSize = length;
+		int outputSize = 2;
+		int weightSize = inputSize * hiddenLayerShapes[0];
 		
+		for(int i = 1; i < length; i++) {
+			weightSize += hiddenLayerShapes[i - 1] * hiddenLayerShapes[i];
+		}
+
+		weightSize += hiddenLayerShapes[length - 1] * outputSize;
+
+		for(int i = 1; i < length; i++) {
+			if(hiddenLayerShapes[i] > hiddenLayerShapes[i - 1]) 
+				System.out.println("A previous layer is smaller than the next !");
+			else if(hiddenLayerShapes[i - 1] < 1)
+				System.out.println("A hidden layer must be a non-zero number !");
+		}
+		
+		//dataWrite(inputSize, weightSize, expectedSize, biasSize); 
+		dataRead();
+		network(hiddenLayerShapes, outputSize);
+		
+		for(double d : outputs) System.out.println(d);
 	}
 }

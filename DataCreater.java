@@ -3,39 +3,39 @@ import java.io.IOException;
 
 public class DataCreater {
 
-	private int row, col, exp, bias;
+	private int inputSize, weightSize, expectedSize, biasSize;
 	
-	public DataCreater(int row, int col, int exp, int bias) {
-		this.row = row;
-		this.col = col;
-		this.exp = exp;
-		this.bias = bias;
+	public DataCreater(int inputSize, int weightSize, int expectedSize, int biasSize) {	
+		this.inputSize = inputSize;
+		this.weightSize = weightSize;
+		this.expectedSize = expectedSize;
+		this.biasSize = biasSize;
 	}
 	
 	public void create() {
-		double[] b = new double [bias];
-		double[] w = new double [row * col];
-		double[] v = new double[row];
-		double[] e = new double[exp];
+		double[] b = new double [biasSize];
+		double[] w = new double [weightSize];
+		double[] in = new double[inputSize];
+		double[] e = new double[expectedSize];
 	
-		for(int i = 0; i < v.length; i++) {
-			v[i] = Math.random();			
+		for(int i = 0; i < inputSize; i++) {
+			in[i] = Math.random();			
 		}
 		
-		for(int i = 0; i < exp; i++) {
+		for(int i = 0; i < expectedSize; i++) {
 			e[i] = Math.random();
 		}	
 		
-		for(int i = 0; i < w.length; i++) {
+		for(int i = 0; i < weightSize; i++) {
 			w[i] = Math.random();
 		}
 		
-		for(int i = 0; i < b.length; i++) {
+		for(int i = 0; i < biasSize; i++) {
 			b[i] = Math.random();
 		}
 
 		writeToFile("weights", w);
-		writeToFile("inputs", v);
+		writeToFile("inputs", in);
 		writeToFile("expected", e);
 		writeToFile("biases", b);
 	}
@@ -46,6 +46,7 @@ public class DataCreater {
 			
 			for(double val : v) file.append(val + "\n");			
 			file.close();
+			
 			System.out.println("Wrote data to the file: " + name + ".txt");
 		} catch (IOException e) {
 			e.printStackTrace();
