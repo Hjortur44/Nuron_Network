@@ -140,16 +140,31 @@ public class Driver {
 				outputs.add(n);
 			}
 		}
+		
+		double err = net.error(outputs, expected);
+		System.out.println("Error: " + err);
+		
+		List<Double> w = new ArrayList<>();
+		for(int i = 0; i < weights.size(); i++) {		
+			double d = net.weightAjustment(weights.get(weights.size() - 1), activations.get(activations.size() - 1), inputs.get(inputs.size() - 1), outputs.get(outputs.size() - 1), expected.get(expected.size() - 1), 1.0);
+			w.add(d);
+		}
+		
+		for(double d : w) {		
+			System.out.println("Weight Ajust: " + d);
+		}
+		
+		weights = w;		
 	}
 	
 	//------------------------------------------------------------------------
 	public static void main(String[] args) {
-		int[] hiddenLayerShapes = {5,3,2,2};
+		int[] hiddenLayerShapes = {1,1,1,1};
 		int length = hiddenLayerShapes.length;
-		int inputSize = 10;
-		int expectedSize = 2;
+		int inputSize = 1;
+		int expectedSize = 1;
 		int biasSize = length;
-		int outputSize = 2;
+		int outputSize = 1;
 		int weightSize = inputSize * hiddenLayerShapes[0];
 		
 		for(int i = 1; i < length; i++) {
@@ -167,8 +182,11 @@ public class Driver {
 		
 		//dataWrite(inputSize, weightSize, expectedSize, biasSize); 
 		dataRead();
-		network(hiddenLayerShapes, outputSize);
 		
-		for(double d : outputs) System.out.println(d);
+		for(int i = 0; i < 3000; i++) {
+			outputs.clear();
+			network(hiddenLayerShapes, outputSize);
+		}
+		for(double d : outputs) System.out.println("Output: " + d);
 	}
 }
