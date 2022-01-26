@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Driver {
-
+	private static NuronNetwork net = new NuronNetwork();
 	private static List<Double> biases = new ArrayList<>();
 	private static List<Double> expected = new ArrayList<>();
 	private static List<Double> weights = new ArrayList<>();
@@ -84,7 +84,7 @@ public class Driver {
 	// The length of this array is the depth of the network,
 	// while individual numbers describe the amount of nodes for each layer.
 	private static void network(int[] hiddenLayerShapes, int outputSize) {
-		NuronNetwork net = new NuronNetwork();
+	
 		int weightCounter = 0;
 		
 		// Inputs * Weights = Activations
@@ -98,7 +98,7 @@ public class Driver {
 			}
 
 			weightCounter += w.size();
-			double n = net.node(inputs, w, biases.get(0));
+			double n = net.sigmoidNode(inputs, w, biases.get(0));
 			activations.add(n);			
 		}		
 		
@@ -117,7 +117,7 @@ public class Driver {
 				}
 	
 				weightCounter += prevShape;
-				double n = net.node(actSub, w, biases.get(i));
+				double n = net.sigmoidNode(actSub, w, biases.get(i));
 				tmp.add(n);				
 			}
 			
@@ -136,57 +136,67 @@ public class Driver {
 					w.add(weights.get(k));	
 				}
 	
-				double n = net.node(actSub, w, 0.0);
+				double n = net.reluNode(actSub, w, 0.0);
 				outputs.add(n);
 			}
 		}
-		
-		double err = net.error(outputs, expected);
-		System.out.println("Error: " + err);
-		
-		List<Double> w = new ArrayList<>();
-		for(int i = 0; i < weights.size(); i++) {		
-			double d = net.weightAjustment(weights.get(weights.size() - 1), activations.get(activations.size() - 1), inputs.get(inputs.size() - 1), outputs.get(outputs.size() - 1), expected.get(expected.size() - 1), 1.0);
-			w.add(d);
-		}
-		
-		for(double d : w) {		
-			System.out.println("Weight Ajust: " + d);
-		}
-		
-		weights = w;		
 	}
 	
 	//------------------------------------------------------------------------
 	public static void main(String[] args) {
-		int[] hiddenLayerShapes = {1,1,1,1};
+		int[] hiddenLayerShapes = {5, 1};
 		int length = hiddenLayerShapes.length;
 		int inputSize = 1;
-		int expectedSize = 1;
+		int expectedSize = hiddenLayerShapes[length - 1];
 		int biasSize = length;
-		int outputSize = 1;
+		int outputSize = expectedSize;
 		int weightSize = inputSize * hiddenLayerShapes[0];
+		double learning = 0.1;
 		
 		for(int i = 1; i < length; i++) {
 			weightSize += hiddenLayerShapes[i - 1] * hiddenLayerShapes[i];
 		}
 
-		weightSize += hiddenLayerShapes[length - 1] * outputSize;
+		weightSize += expectedSize * outputSize;
 
-		for(int i = 1; i < length; i++) {
-			if(hiddenLayerShapes[i] > hiddenLayerShapes[i - 1]) 
-				System.out.println("A previous layer is smaller than the next !");
-			else if(hiddenLayerShapes[i - 1] < 1)
-				System.out.println("A hidden layer must be a non-zero number !");
-		}
-		
 		//dataWrite(inputSize, weightSize, expectedSize, biasSize); 
 		dataRead();
+		network(hiddenLayerShapes, outputSize);
+		for(double d : weights) System.out.println("Pre_Weights: " + d);
+		for(double d : outputs) System.out.println("Pre_Outputs: " + d);
 		
-		for(int i = 0; i < 3000; i++) {
-			outputs.clear();
+		for(int i = 0; i < 4000; i++) {
+			double oldWeight1 = weights.remove(1);
+			double cost = net.errorDerivative(outputs.remove(0), expected.get(0));
+			double sig = net.sigmoidDerivative(activations.remove(0), oldWeight1);
+	
+			double newWeight1 = oldWeight1 - (learning * oldWeight1 * sig * cost);
+			weights.add(newWeight1);
+
+			activations.clear();
 			network(hiddenLayerShapes, outputSize);
+			
+			double oldWeight0 = weights.remove(0);
+			double cost2 = net.errorDerivative(outputs.remove(0), expected.get(0));	
+			double sig2 = net.sigmoidDerivative(inputs.get(0), oldWeight0);
+			
+			double newWeight0 = oldWeight0 - (learning * oldWeight0  * sig2 * cost2);
+
+			weights.add(0, newWeight0);
+			activations.clear();
+			network(hiddenLayerShapes, outputSize);
+			
+			
+			// Stop guard.
+			if(outputs.get(0) < expected.get(0) && outputs.get(0) / expected.get(0) > 0.99) {
+				System.out.println("Stopped: " + i);
+				break;
+			}
+			
 		}
-		for(double d : outputs) System.out.println("Output: " + d);
+
+		for(double d : expected) System.out.println("Expected: " + d);
+		for(double d : weights) System.out.println("Post_Weights: " + d);
+		for(double d : outputs) System.out.println("Post_Outputs: " + d);
 	}
 }

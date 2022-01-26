@@ -7,60 +7,58 @@ public class NuronNetwork {
 
 	}
 
-	public double node(List<Double> input, List<Double> weight, double bias) {
-		double sum = 0.0;
-
-		for(int i = 0; i < input.size(); i++) {
-			sum += input.get(i) * weight.get(i);
-		}
-		
-		return sigmoid(sum + bias);
+	public double sigmoidNode(List<Double> inputs, List<Double> weights, double bias) {
+		return sigmoid(calc(inputs, weights) + bias);
 	}
 	
-	// Mean Square Error function.
+	public double reluNode(List<Double> inputs, List<Double> weights, double bias) {		
+		return relu(calc(inputs, weights) + bias);
+	}
+	
+	// Mean Square Error.
 	public double error(List<Double> real, List<Double> expected) {
 		if(real.size() != expected.size()) return -1.0;
 		
 		double sum = 0.0;
 		
 		for(int i = 0; i < real.size(); i++) {
-			double dif = (real.get(i) - expected.get(i)) * (real.get(i) - expected.get(i));
-
-			sum += dif;
+			double dif = (real.get(i) - expected.get(i));
+			sum += dif * dif;
 		}
 		
 		return sum / real.size();
 	}
 	
-	public double weightAjustment(double prevWeight, double prevActivation, double input, double output, double expected, double learningRate) {
-	
-		double err = errorDerivative(output, expected);
-		double sig = sigmoidDerivative(prevActivation, prevWeight);
-		double in = input;
+	// Sum += Inputs * Weights calculations.
+	private double calc(List<Double> input, List<Double> weight) {
+		double sum = 0.0;
 
-		double w = learningRate * in * sig * err;
-		return prevWeight - w;		
+		for(int i = 0; i < input.size(); i++) {
+			sum += input.get(i) * weight.get(i);
+		}
+		
+		return sum;
 	}
 	
+	// RELU
+	private double relu(double x) {
+		return (x < 0)? 0 : x;
+	}
+
 	// Sigmoid.
 	private double sigmoid(double x) {
 		return (1.0 / (1.0 + Math.pow(Math.E, (-x))));		
 	}
 	
 	// Derivative of Sigmoid.
-	private double sigmoidDerivative(double input, double weight) {
+	public double sigmoidDerivative(double input, double weight) {
 		double s = sigmoid(input * weight);
 		return s * (1 - s);
 	}
 	
 	// Derivative of the cost function (Mean Square Error).
-	private double errorDerivative(double real, double expected) {
+	public double errorDerivative(double real, double expected) {
 		return 2 * (real - expected);
-	}
-	
-	// Derivative of the input.
-	private  double inputDerivative(double input) {
-		return input;
 	}
 
 	private boolean validate(int a, int b) {
